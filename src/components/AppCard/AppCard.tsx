@@ -1,11 +1,14 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useEffect, useState, useCallback } from "react";
 
+import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 import find from "find-process";
 
 import clsx from "clsx";
+import { ScrollFollow, LazyLog } from "react-lazylog";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { red, green, grey } from "@material-ui/core/colors";
+import { red, green, grey, indigo } from "@material-ui/core/colors";
+import BrandingWatermarkIcon from "@material-ui/icons/BrandingWatermark";
 
 import Card from "@material-ui/core/Card";
 import CardHeader from "@material-ui/core/CardHeader";
@@ -14,8 +17,11 @@ import Button from "@material-ui/core/Button";
 import AutorenewIcon from "@material-ui/icons/Autorenew";
 import Chip from "@material-ui/core/Chip";
 import Badge from "@material-ui/core/Badge";
+import IconButton from "@material-ui/core/IconButton";
 
 import { ServiceProps } from "containers/Home";
+
+require("events").EventEmitter.prototype._maxListeners = Infinity;
 
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
@@ -50,6 +56,15 @@ const useStyles = makeStyles({
   badge: {
     backgroundColor: "#eee",
   },
+  cardActionsLeft: {
+    flexGrow: 1,
+  },
+  terminalBtn: {
+    color: "#333",
+  },
+  terminalBtnActive: {
+    color: indigo[500],
+  },
 });
 
 const STATUS = {
@@ -60,15 +75,12 @@ const STATUS = {
 
 type StatusType = typeof STATUS[keyof typeof STATUS];
 
-export const AppCard: FC<ServiceProps> = ({
-  name,
-  localPath,
-  lastDockerBuld,
-  script,
-  port,
-}) => {
+export const AppCard: FC<ServiceProps> = ({ name, localPath, lastDockerBuld, script, port }) => {
   const [status, setStatus] = useState<StatusType>(STATUS.LOADING);
   const [pid, setPid] = useState<number>();
+  const [logs, setLogs] = useState<string>(" ");
+  const [viewLogs, setViewLogs] = useState<boolean>(false);
+  const [npmRun, setNpmRun] = useState<ChildProcessWithoutNullStreams | undefined>();
   const classes = useStyles();
   const bull = (
     <span
@@ -77,11 +89,7 @@ export const AppCard: FC<ServiceProps> = ({
         [classes.bulletStop]: status === STATUS.STOPPED,
       })}
     >
-      {status === STATUS.LOADING ? (
-        <AutorenewIcon className={classes.animateLoading} />
-      ) : (
-        "•"
-      )}
+      {status === STATUS.LOADING ? <AutorenewIcon className={classes.animateLoading} /> : "•"}
     </span>
   );
 
@@ -105,13 +113,20 @@ export const AppCard: FC<ServiceProps> = ({
 
   useEffect(checkPort, []);
 
+  npmRun?.stdout?.on("data", (nextLogs: string) => setLogs(`${logs}\n${nextLogs}`));
+  npmRun?.stderr?.on("data", (nextLogs: string) => setLogs(`${logs}\n${nextLogs}`));
+  npmRun?.on("close", (code: string) => {
+    setLogs(`${logs}\nchild process exited with code ${code}`);
+  });
+
   const runService = async () => {
     setStatus(STATUS.LOADING);
     try {
-      exec(`${script} --prefix ${localPath}`);
+      const [cmd, ...args] = script.split(" ");
+      const run = spawn(cmd, args, { cwd: localPath });
+      setNpmRun(run);
 
       const intervalId = setInterval(() => {
-        console.log("intervalId: ", intervalId);
         find("port", port)
           .then(async (list) => {
             const serviceProcess = list[0];
@@ -127,7 +142,6 @@ export const AppCard: FC<ServiceProps> = ({
             clearInterval(intervalId);
           });
       }, 1000);
-      // setTimeout(checkPort, 5000);
     } catch (error) {
       setStatus(STATUS.STOPPED);
     }
@@ -143,6 +157,13 @@ export const AppCard: FC<ServiceProps> = ({
     }
   };
 
+  const restart = () => {
+    (async () => {
+      await stopService();
+      runService();
+    })();
+  };
+
   return (
     <Card className={classes.root}>
       <CardHeader
@@ -152,27 +173,58 @@ export const AppCard: FC<ServiceProps> = ({
         title={
           <>
             <Chip label={port} size="small" color="primary" />
-            <Badge
-              badgeContent={`${lastDockerBuld}`}
-              classes={{ badge: classes.badge }}
-            >
-              <span>&nbsp;{name}&nbsp;</span>
-            </Badge>
+            <span>&nbsp;{name}&nbsp;</span>
           </>
         }
         subheader={localPath}
         action={bull}
       />
       <CardActions>
-        <Button
-          disabled={status === STATUS.LOADING}
-          size="small"
+        <div className={classes.cardActionsLeft}>
+          <Button
+            disabled={status === STATUS.LOADING}
+            size="small"
+            color="primary"
+            onClick={status === STATUS.RUNNNIG ? stopService : runService}
+          >
+            {status === STATUS.RUNNNIG ? `Stop` : `Run`}
+          </Button>
+          <Button disabled={status !== STATUS.RUNNNIG} size="small" color="primary" onClick={restart}>
+            Restart
+          </Button>
+        </div>
+        <IconButton
+          className={clsx(classes.terminalBtn, { [classes.terminalBtnActive]: viewLogs })}
           color="primary"
-          onClick={status === STATUS.RUNNNIG ? stopService : runService}
+          onClick={() => {
+            setViewLogs(!viewLogs);
+          }}
         >
-          {status === STATUS.RUNNNIG ? `Stop` : `Run`}
-        </Button>
+          <BrandingWatermarkIcon fontSize="small" />
+        </IconButton>
       </CardActions>
+      {viewLogs && (
+        <div style={{ height: 500 }}>
+          <ScrollFollow
+            startFollowing
+            render={({ onScroll, follow }) => {
+              // console.log("onScroll, follow: ", onScroll, follow);
+              return (
+                <LazyLog
+                  extraLines={1}
+                  enableSearch
+                  text={logs}
+                  stream
+                  //eslint-disable-next-line
+                  // @ts-ignore
+                  onScroll={onScroll}
+                  follow={follow}
+                />
+              );
+            }}
+          />
+        </div>
+      )}
     </Card>
   );
 };

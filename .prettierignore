@@ -1,0 +1,17 @@
+node_modules
+build
+storybook-static
+README.md
+yarn.lock
+.DS_Store
+*.svg
+*.woff
+*.woff2
+*.snap
+Dockerfile
+.eslintignore
+.dockerignore
+.prettierignore
+.gitignore
+nginx
+*.png

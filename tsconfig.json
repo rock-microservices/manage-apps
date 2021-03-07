@@ -16,7 +16,14 @@
       "containers/*": ["src/containers/*"],
       "db/*": ["db/*"]
     },
-    "jsx": "react"
-  },
-  "include": ["src/**/*"]
+    "jsx": "react",
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "declaration": true
+  }
 }

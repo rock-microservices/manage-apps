@@ -6,15 +6,11 @@ import Container from "@material-ui/core/Container";
 import { AppCard } from "components/AppCard";
 
 const fs = require("fs");
-const config: ConfigProps = JSON.parse(
-  fs.readFileSync("db/config.json", "utf8")
-);
-const serviceConfigTemplate: ServiceProps[] = JSON.parse(
-  fs.readFileSync("db/service-config.json", "utf8")
-);
+const config: ConfigProps = JSON.parse(fs.readFileSync("db/config.json", "utf8"));
+const serviceConfigTemplate: ServiceProps[] = JSON.parse(fs.readFileSync("db/service-config.json", "utf8"));
 
 const serviceConfig = serviceConfigTemplate.map(
-  (service) => jVar({ ...service, ...config }) as ServiceProps & ConfigProps
+  (service) => jVar({ ...service, ...config }) as ServiceProps & ConfigProps,
 );
 
 // const util = require("util");
@@ -35,9 +31,9 @@ export interface ServiceProps {
 }
 
 const DEFAULT_ORDER = 1000;
-const getOrder = (order?: number) => {
+const getOrder = (order?: number): number => {
   const isset = typeof order === "number";
-  return isset ? order : DEFAULT_ORDER;
+  return isset ? (order as number) : DEFAULT_ORDER;
 };
 
 export const Home: FC = () => {
