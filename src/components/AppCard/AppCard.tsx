@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState, useCallback } from "react";
+import React, { FC, useEffect, useState, useCallback, useRef } from "react";
 
 import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 import find from "find-process";
@@ -67,20 +67,30 @@ const useStyles = makeStyles({
   },
 });
 
-const STATUS = {
+export const STATUS = {
   RUNNNIG: "runnning",
   STOPPED: "stopped",
   LOADING: "loading",
 } as const;
 
-type StatusType = typeof STATUS[keyof typeof STATUS];
+export type StatusType = typeof STATUS[keyof typeof STATUS];
 
-export const AppCard: FC<ServiceProps> = ({ name, localPath, lastDockerBuld, script, port }) => {
+export type InstanceType = {
+  props?: React.PropsWithChildren<ServiceProps>;
+  run?: () => void;
+  stop?: () => void;
+  restart?: () => void;
+  status?: StatusType;
+};
+
+export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType) => void }> = (props) => {
+  const { name, localPath, script, port, getInstance } = props;
   const [status, setStatus] = useState<StatusType>(STATUS.LOADING);
   const [pid, setPid] = useState<number>();
   const [logs, setLogs] = useState<string>(" ");
   const [viewLogs, setViewLogs] = useState<boolean>(false);
   const [npmRun, setNpmRun] = useState<ChildProcessWithoutNullStreams | undefined>();
+  const instance = useRef({} as InstanceType);
   const classes = useStyles();
   const bull = (
     <span
@@ -112,6 +122,17 @@ export const AppCard: FC<ServiceProps> = ({ name, localPath, lastDockerBuld, scr
   };
 
   useEffect(checkPort, []);
+  useEffect(() => {
+    if (!instance) return;
+    instance.current = {
+      props,
+      run: runService,
+      stop: stopService,
+      restart,
+      status,
+    };
+    getInstance?.(instance.current);
+  }, [status]);
 
   npmRun?.stdout?.on("data", (nextLogs: string) => setLogs(`${logs}\n${nextLogs}`));
   npmRun?.stderr?.on("data", (nextLogs: string) => setLogs(`${logs}\n${nextLogs}`));

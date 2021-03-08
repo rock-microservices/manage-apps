@@ -1,9 +1,9 @@
-import React, { FC } from "react";
+import React, { FC, useRef } from "react";
 
 import { jVar } from "json-variables";
 
-import Container from "@material-ui/core/Container";
-import { AppCard } from "components/AppCard";
+import { Container, Button, makeStyles } from "@material-ui/core";
+import { AppCard, InstanceType, STATUS } from "components/AppCard";
 
 const fs = require("fs");
 const config: ConfigProps = JSON.parse(fs.readFileSync("db/config.json", "utf8"));
@@ -28,6 +28,7 @@ export interface ServiceProps {
   port: number;
   order: number;
   podName: string;
+  group?: string;
 }
 
 const DEFAULT_ORDER = 1000;
@@ -36,7 +37,20 @@ const getOrder = (order?: number): number => {
   return isset ? (order as number) : DEFAULT_ORDER;
 };
 
+const useStyles = makeStyles({
+  headerActions: {
+    display: "flex",
+    paddingTop: 40,
+    "& > *": {
+      marginRight: 20,
+    },
+  },
+});
+
 export const Home: FC = () => {
+  const instances = useRef({} as { [key: string]: InstanceType });
+  const classes = useStyles();
+
   const services = serviceConfig
     .filter((service) => Boolean(service.localPath))
     .sort((serviceA, serviceB) => {
@@ -47,8 +61,61 @@ export const Home: FC = () => {
 
   return (
     <Container maxWidth="lg">
+      <div className={classes.headerActions}>
+        <Button
+          size="small"
+          color="primary"
+          onClick={() => {
+            for (const serviceName in instances.current) {
+              const service = instances.current[serviceName];
+              if (service?.props?.group === "common") {
+                service?.run?.();
+              }
+            }
+          }}
+        >
+          Run common
+        </Button>
+        <Button
+          size="small"
+          color="primary"
+          onClick={() => {
+            for (const serviceName in instances.current) {
+              const service = instances.current[serviceName];
+              if (service?.status === STATUS.RUNNNIG) {
+                service?.restart?.();
+              }
+            }
+          }}
+        >
+          Restart runnig
+        </Button>
+        <Button
+          size="small"
+          color="primary"
+          onClick={() => {
+            for (const serviceName in instances.current) {
+              const service = instances.current[serviceName];
+              if (service?.status === STATUS.RUNNNIG) {
+                service?.stop?.();
+              }
+            }
+          }}
+        >
+          Stop all
+        </Button>
+      </div>
       {services.map((service) => {
-        return <AppCard key={service.name} {...service} />;
+        return (
+          <AppCard
+            key={service.name}
+            getInstance={(instance) => {
+              if (!instance?.props?.name) return;
+              instances.current[instance?.props?.name] = instance;
+            }}
+            {...service}
+          />
+        );
       })}
     </Container>
   );
