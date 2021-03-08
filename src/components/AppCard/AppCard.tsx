@@ -16,10 +16,13 @@ import CardActions from "@material-ui/core/CardActions";
 import Button from "@material-ui/core/Button";
 import AutorenewIcon from "@material-ui/icons/Autorenew";
 import Chip from "@material-ui/core/Chip";
-import Badge from "@material-ui/core/Badge";
 import IconButton from "@material-ui/core/IconButton";
+import MemoryIcon from "@material-ui/icons/Memory";
 
 import { ServiceProps } from "containers/Home";
+
+import pidusage, { Stat } from "helpers/pidusage";
+import { sizeFormatter } from "helpers/sizeFormatter";
 
 require("events").EventEmitter.prototype._maxListeners = Infinity;
 
@@ -87,6 +90,7 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
   const { name, localPath, script, port, getInstance } = props;
   const [status, setStatus] = useState<StatusType>(STATUS.LOADING);
   const [pid, setPid] = useState<number>();
+  const [pidStats, setPidStats] = useState<Stat>();
   const [logs, setLogs] = useState<string>(" ");
   const [viewLogs, setViewLogs] = useState<boolean>(false);
   const [npmRun, setNpmRun] = useState<ChildProcessWithoutNullStreams | undefined>();
@@ -102,6 +106,29 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
       {status === STATUS.LOADING ? <AutorenewIcon className={classes.animateLoading} /> : "•"}
     </span>
   );
+
+  const compute = async (pid: number) => {
+    const stats = await pidusage(pid);
+    setPidStats(stats as Stat);
+  };
+
+  const interval = useCallback(
+    async (time: number) => {
+      if (!pid || status !== STATUS.RUNNNIG) return;
+      setTimeout(async () => {
+        try {
+          await compute(pid);
+          interval(time);
+        } catch (error) {}
+      }, time);
+    },
+    [pid, status],
+  );
+
+  useEffect(() => {
+    if (!pid || status !== STATUS.RUNNNIG) return;
+    interval(1000);
+  }, [pid, status]);
 
   const checkPort = () => {
     find("port", port)
@@ -195,6 +222,21 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
           <>
             <Chip label={port} size="small" color="primary" />
             <span>&nbsp;{name}&nbsp;</span>
+            {status === STATUS.RUNNNIG && pidStats && (
+              <Chip
+                icon={<MemoryIcon />}
+                label={
+                  <>
+                    <span>{typeof pidStats?.cpu === "number" ? `${Math.round(pidStats?.cpu)}% CPU` : ``}</span>
+                    &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+                    <span>{typeof pidStats?.memory === "number" ? sizeFormatter(pidStats?.memory) : ``}</span>
+                  </>
+                }
+                size="small"
+                variant="outlined"
+                color="primary"
+              />
+            )}
           </>
         }
         subheader={localPath}

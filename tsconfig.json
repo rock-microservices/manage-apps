@@ -14,6 +14,7 @@
       "*": ["node_modules/*"],
       "components/*": ["src/components/*"],
       "containers/*": ["src/containers/*"],
+      "helpers/*": ["src/helpers/*"],
       "db/*": ["db/*"]
     },
     "jsx": "react",
