@@ -161,11 +161,11 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
     getInstance?.(instance.current);
   }, [status]);
 
-  npmRun?.stdout?.on("data", (nextLogs: string) => setLogs(`${logs}\n${nextLogs}`));
-  npmRun?.stderr?.on("data", (nextLogs: string) => setLogs(`${logs}\n${nextLogs}`));
-  npmRun?.on("close", (code: string) => {
-    setLogs(`${logs}\nchild process exited with code ${code}`);
-  });
+  // npmRun?.stdout?.on("data", (nextLogs: string) => setLogs(`${logs}\n${nextLogs}`));
+  // npmRun?.stderr?.on("data", (nextLogs: string) => setLogs(`${logs}\n${nextLogs}`));
+  // npmRun?.on("close", (code: string) => {
+  //   setLogs(`${logs}\nchild process exited with code ${code}`);
+  // });
 
   const runService = async () => {
     setStatus(STATUS.LOADING);
@@ -256,7 +256,7 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
             Restart
           </Button>
         </div>
-        <IconButton
+        {/* <IconButton
           className={clsx(classes.terminalBtn, { [classes.terminalBtnActive]: viewLogs })}
           color="primary"
           onClick={() => {
@@ -264,7 +264,7 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
           }}
         >
           <BrandingWatermarkIcon fontSize="small" />
-        </IconButton>
+        </IconButton> */}
       </CardActions>
       {viewLogs && (
         <div style={{ height: 500 }}>
