@@ -15,7 +15,8 @@
       "components/*": ["src/components/*"],
       "containers/*": ["src/containers/*"],
       "helpers/*": ["src/helpers/*"],
-      "db/*": ["db/*"]
+      "db/*": ["db/*"],
+      "api-config": ["src/api-config"]
     },
     "jsx": "react",
     "target": "es5",

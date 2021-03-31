@@ -1,28 +1,38 @@
-import React, { FC, useEffect, useState, useCallback, useRef } from "react";
+import React, { FC, useEffect, useCallback, useState, useMemo, useRef } from "react";
 
 import { spawn, ChildProcessWithoutNullStreams } from "child_process";
+import { shell } from "electron";
 import find from "find-process";
 
 import clsx from "clsx";
 import { ScrollFollow, LazyLog } from "react-lazylog";
 
 import { makeStyles } from "@material-ui/core/styles";
-import { red, green, grey, indigo } from "@material-ui/core/colors";
+import { red, green, amber, grey, indigo } from "@material-ui/core/colors";
 import BrandingWatermarkIcon from "@material-ui/icons/BrandingWatermark";
 
 import Card from "@material-ui/core/Card";
 import CardHeader from "@material-ui/core/CardHeader";
 import CardActions from "@material-ui/core/CardActions";
 import Button from "@material-ui/core/Button";
-import AutorenewIcon from "@material-ui/icons/Autorenew";
 import Chip from "@material-ui/core/Chip";
+import Link from "@material-ui/core/Link";
+
+import AutorenewIcon from "@material-ui/icons/Autorenew";
 import IconButton from "@material-ui/core/IconButton";
 import MemoryIcon from "@material-ui/icons/Memory";
+import CheckCircleOutlineIcon from "@material-ui/icons/CheckCircleOutline";
+import CancelIcon from "@material-ui/icons/Cancel";
+import TimelapseIcon from "@material-ui/icons/Timelapse";
 
 import { ServiceProps } from "containers/Home";
+import { GitlabLogo } from "components/icons/GitlabLogo";
 
 import pidusage, { Stat } from "helpers/pidusage";
 import { sizeFormatter } from "helpers/sizeFormatter";
+import { useFetch } from "helpers/useFetch";
+
+import * as apiConfig from "api-config";
 
 require("events").EventEmitter.prototype._maxListeners = Infinity;
 
@@ -38,7 +48,6 @@ const useStyles = makeStyles({
     display: "inline-block",
     fontSize: 50,
     lineHeight: "35px",
-    marginRight: 10,
     color: grey[300],
   },
   bulletStop: {
@@ -68,6 +77,29 @@ const useStyles = makeStyles({
   terminalBtnActive: {
     color: indigo[500],
   },
+  gitlabInfo: {
+    display: "flex",
+    alignItems: "center",
+    fontSize: 12,
+  },
+  gitlabChip: {
+    borderRadius: 4,
+    marginLeft: 8,
+    marginRight: 8,
+    color: green[500],
+    borderColor: green[500],
+  },
+  gitlabChipFailed: {
+    color: red[500],
+    borderColor: red[500],
+  },
+  gitlabChipRunning: {
+    color: amber[500],
+    borderColor: amber[500],
+  },
+  link: {
+    cursor: "pointer",
+  },
 });
 
 export const STATUS = {
@@ -86,8 +118,24 @@ export type InstanceType = {
   status?: StatusType;
 };
 
+export type PiplineType = {
+  created_at: string;
+  id: number;
+  ref: string;
+  sha: string;
+  status: string;
+  updated_at: string;
+  web_url: string;
+};
+
+const GITLAB_STATUS_ICONS: { [key: string]: React.ReactElement } = {
+  success: <CheckCircleOutlineIcon style={{ color: green[500] }} />,
+  failed: <CancelIcon style={{ color: red[500] }} />,
+  running: <TimelapseIcon style={{ color: amber[500] }} />,
+};
+
 export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType) => void }> = (props) => {
-  const { name, localPath, script, port, getInstance } = props;
+  const { name, localPath, script, port, getInstance, gitlabId, gitlabToken } = props;
   const [status, setStatus] = useState<StatusType>(STATUS.LOADING);
   const [pid, setPid] = useState<number>();
   const [pidStats, setPidStats] = useState<Stat>();
@@ -113,21 +161,21 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
   };
 
   const interval = useCallback(
-    async (time: number) => {
+    async (time: number, startTime?: number) => {
       if (!pid || status !== STATUS.RUNNNIG) return;
       setTimeout(async () => {
         try {
           await compute(pid);
           interval(time);
         } catch (error) {}
-      }, time);
+      }, startTime || time);
     },
     [pid, status],
   );
 
   useEffect(() => {
     if (!pid || status !== STATUS.RUNNNIG) return;
-    interval(1000);
+    interval(5000, 300);
   }, [pid, status]);
 
   const checkPort = () => {
@@ -147,6 +195,18 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
         setStatus(STATUS.STOPPED);
       });
   };
+
+  const [piplines, loadingPiplines, hasErrorPiplines] = gitlabId
+    ? useFetch<PiplineType[]>(apiConfig.GITLAB_PIPLINES(gitlabId), {
+        headers: {
+          "Private-Token": gitlabToken,
+        },
+      })
+    : [];
+
+  const lastPipline = useMemo(() => {
+    return piplines?.length ? piplines[0] : null;
+  }, [piplines]);
 
   useEffect(checkPort, []);
   useEffect(() => {
@@ -256,6 +316,36 @@ export const AppCard: FC<ServiceProps & { getInstance?: (instance: InstanceType)
             Restart
           </Button>
         </div>
+        {lastPipline && (
+          <div className={classes.gitlabInfo}>
+            <Link
+              className={classes.link}
+              onClick={() => {
+                shell.openExternal(lastPipline.web_url);
+              }}
+            >
+              {lastPipline.ref}
+            </Link>
+            <Chip
+              className={clsx(classes.gitlabChip, {
+                [classes.gitlabChipFailed]: lastPipline.status === "failed",
+                [classes.gitlabChipRunning]: lastPipline.status === "running",
+              })}
+              label={lastPipline.status}
+              variant="outlined"
+              size="small"
+              icon={GITLAB_STATUS_ICONS[lastPipline.status]}
+            />
+            <Link
+              className={classes.link}
+              onClick={() => {
+                shell.openExternal(lastPipline.web_url.replace(/(.+)(\/\d+)$/, "$1"));
+              }}
+            >
+              <GitlabLogo />
+            </Link>
+          </div>
+        )}
         {/* <IconButton
           className={clsx(classes.terminalBtn, { [classes.terminalBtnActive]: viewLogs })}
           color="primary"

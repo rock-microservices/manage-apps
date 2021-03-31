@@ -29,6 +29,8 @@ export interface ServiceProps {
   order: number;
   podName: string;
   group?: string;
+  gitlabToken: string;
+  gitlabId?: string;
 }
 
 const DEFAULT_ORDER = 1000;
