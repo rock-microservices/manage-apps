@@ -1,36 +1,20 @@
-import React, { FC, useRef } from "react";
-
+import { FC, useRef } from "react";
 import { jVar } from "json-variables";
 
 import { Container, Button, makeStyles } from "@material-ui/core";
-import { AppCard, InstanceType, STATUS } from "components/AppCard";
+
+import { TService, TInstance } from "types/types";
+import { PROJECT_STATUS } from "constants/projectStatus";
+import { AppCard } from "components/AppCard";
 
 const fs = require("fs");
 const config: ConfigProps = JSON.parse(fs.readFileSync("db/config.json", "utf8"));
-const serviceConfigTemplate: ServiceProps[] = JSON.parse(fs.readFileSync("db/service-config.json", "utf8"));
+const serviceConfigTemplate: TService[] = JSON.parse(fs.readFileSync("db/service-config.json", "utf8"));
 
-const serviceConfig = serviceConfigTemplate.map(
-  (service) => jVar({ ...service, ...config }) as ServiceProps & ConfigProps,
-);
-
-// const util = require("util");
-// const exec = util.promisify(require("child_process").exec);
+const serviceConfig = serviceConfigTemplate.map((service) => jVar({ ...service, ...config }) as TService & ConfigProps);
 
 export interface ConfigProps {
   localPathProfix: string;
-}
-
-export interface ServiceProps {
-  name: string;
-  localPath: string;
-  lastDockerBuld: string;
-  script: string;
-  port: number;
-  order: number;
-  podName: string;
-  group?: string;
-  gitlabToken: string;
-  gitlabId?: string;
 }
 
 const DEFAULT_ORDER = 1000;
@@ -50,7 +34,7 @@ const useStyles = makeStyles({
 });
 
 export const Home: FC = () => {
-  const instances = useRef({} as { [key: string]: InstanceType });
+  const instances = useRef({} as { [key: string]: TInstance });
   const classes = useStyles();
 
   const services = serviceConfig
@@ -84,7 +68,7 @@ export const Home: FC = () => {
           onClick={() => {
             for (const serviceName in instances.current) {
               const service = instances.current[serviceName];
-              if (service?.status === STATUS.RUNNNIG) {
+              if (service?.status === PROJECT_STATUS.RUNNNIG) {
                 service?.restart?.();
               }
             }
@@ -98,7 +82,7 @@ export const Home: FC = () => {
           onClick={() => {
             for (const serviceName in instances.current) {
               const service = instances.current[serviceName];
-              if (service?.status === STATUS.RUNNNIG) {
+              if (service?.status === PROJECT_STATUS.RUNNNIG) {
                 service?.stop?.();
               }
             }

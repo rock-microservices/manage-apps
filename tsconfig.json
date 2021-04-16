@@ -13,12 +13,14 @@
     "paths": {
       "*": ["node_modules/*"],
       "components/*": ["src/components/*"],
-      "containers/*": ["src/containers/*"],
+      "constants/*": ["src/constants/*"],
+      "pages/*": ["src/pages/*"],
+      "types/*": ["src/types/*"],
       "helpers/*": ["src/helpers/*"],
       "db/*": ["db/*"],
       "api-config": ["src/api-config"]
     },
-    "jsx": "react",
+    "jsx": "react-jsx",
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowSyntheticDefaultImports": true,
