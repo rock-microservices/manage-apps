@@ -1,5 +1,6 @@
 import { FC, useRef } from "react";
 import { jVar } from "json-variables";
+import simpleGit from "simple-git";
 
 import { Container, Button, makeStyles } from "@material-ui/core";
 
@@ -89,6 +90,33 @@ export const Home: FC = () => {
           }}
         >
           Stop all
+        </Button>
+        <Button
+          size="small"
+          color="primary"
+          onClick={async () => {
+            const promises = Object.entries(instances.current).map(
+              ([
+                ,
+                {
+                  props: { localPath },
+                },
+              ]) => {
+                const git = simpleGit({ baseDir: localPath });
+
+                git.checkout("develop");
+                return git.pull("origin", "develop");
+              },
+            );
+
+            try {
+              const res = await Promise.all(promises);
+            } catch (error) {
+              console.log(error);
+            }
+          }}
+        >
+          Pull develop
         </Button>
       </div>
       {services.map((service) => {
