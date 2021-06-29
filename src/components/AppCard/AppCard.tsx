@@ -1,7 +1,6 @@
 import { FC, useEffect, useCallback, useState, useMemo, useRef } from "react";
 import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 import find from "find-process";
-import { ScrollFollow, LazyLog } from "react-lazylog";
 
 import Card from "@material-ui/core/Card";
 import CardHeader from "@material-ui/core/CardHeader";
@@ -31,7 +30,6 @@ export const AppCard: FC<TService & { getInstance?: (instance: TInstance) => voi
   const [pid, setPid] = useState<number>();
   const [pidStats, setPidStats] = useState<Stat>();
   const [logs, setLogs] = useState<string>(" ");
-  const [viewLogs, setViewLogs] = useState<boolean>(false);
   const [npmRun, setNpmRun] = useState<ChildProcessWithoutNullStreams | undefined>();
   const instance = useRef({} as TInstance);
   const classes = useStyles();
@@ -56,7 +54,7 @@ export const AppCard: FC<TService & { getInstance?: (instance: TInstance) => voi
 
   useEffect(() => {
     if (!pid || status !== PROJECT_STATUS.RUNNNIG) return;
-    interval(5000, 300);
+    // interval(60000, 300);
   }, [pid, status]);
 
   const checkPort = () => {
@@ -169,28 +167,6 @@ export const AppCard: FC<TService & { getInstance?: (instance: TInstance) => voi
       />
       <CardContent>
         <Git localPath={localPath} gitlabId={gitlabId} gitlabToken={gitlabToken} />
-        {viewLogs && (
-          <div style={{ height: 500 }}>
-            <ScrollFollow
-              startFollowing
-              render={({ onScroll, follow }) => {
-                // console.log("onScroll, follow: ", onScroll, follow);
-                return (
-                  <LazyLog
-                    extraLines={1}
-                    enableSearch
-                    text={logs}
-                    stream
-                    //eslint-disable-next-line
-                    // @ts-ignore
-                    onScroll={onScroll}
-                    follow={follow}
-                  />
-                );
-              }}
-            />
-          </div>
-        )}
       </CardContent>
       <CardActions>
         <div className={classes.cardActionsLeft}>
@@ -213,15 +189,6 @@ export const AppCard: FC<TService & { getInstance?: (instance: TInstance) => voi
             Restart
           </Button>
         </div>
-        {/* <IconButton
-          className={clsx(classes.terminalBtn, { [classes.terminalBtnActive]: viewLogs })}
-          color="primary"
-          onClick={() => {
-            setViewLogs(!viewLogs);
-          }}
-        >
-          <BrandingWatermarkIcon fontSize="small" />
-        </IconButton> */}
       </CardActions>
     </Card>
   );
