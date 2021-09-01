@@ -95,19 +95,12 @@ export const Home: FC = () => {
           size="small"
           color="primary"
           onClick={async () => {
-            const promises = Object.entries(instances.current).map(
-              ([
-                ,
-                {
-                  props: { localPath },
-                },
-              ]) => {
-                const git = simpleGit({ baseDir: localPath });
+            const promises = Object.entries(instances.current).map(([, { props }]) => {
+              const git = simpleGit({ baseDir: props?.localPath });
 
-                git.checkout("develop");
-                return git.pull("origin", "develop");
-              },
-            );
+              git.checkout("develop");
+              return git.pull("origin", "develop");
+            });
 
             try {
               const res = await Promise.all(promises);
